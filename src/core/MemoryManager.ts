@@ -3,16 +3,29 @@
  */
 
 import type { GridItem } from '../types'
+import { logger } from '../utils/logger'
+
+export interface MemoryStats {
+  heapUsed?: number
+  heapTotal?: number
+  elementPoolSize: number
+  cleanupCallbacks: number
+  lastGC?: number
+}
 
 export class MemoryManager {
   private itemDataMap = new WeakMap<HTMLElement, any>()
   private cleanupCallbacks: Array<() => void> = []
   private cleanupInterval: number | undefined
   private gcThreshold = 100 // items
+  private lastGCTime = 0
+  private leakDetection = new Map<string, { element: WeakRef<HTMLElement>, timestamp: number }>()
+  private leakCheckInterval: number | undefined
 
   constructor(enableAutoCleanup = true) {
     if (enableAutoCleanup) {
       this.startAutoCleanup()
+      this.startLeakDetection()
     }
   }
 
@@ -68,9 +81,69 @@ export class MemoryManager {
   }
 
   /**
+   * Start memory leak detection
+   */
+  private startLeakDetection(): void {
+    if (typeof WeakRef === 'undefined') {
+      logger.warn('WeakRef not supported, leak detection disabled')
+      return
+    }
+
+    this.leakCheckInterval = window.setInterval(() => {
+      this.checkForLeaks()
+    }, 60000) // Every minute
+  }
+
+  /**
+   * Check for memory leaks
+   */
+  private checkForLeaks(): void {
+    const now = Date.now()
+    const staleThreshold = 300000 // 5 minutes
+    const leaks: string[] = []
+
+    this.leakDetection.forEach((value, key) => {
+      // If element is still referenced after threshold, it might be a leak
+      if (now - value.timestamp > staleThreshold) {
+        const element = value.element.deref()
+        if (element && !document.contains(element)) {
+          leaks.push(key)
+          logger.warn('Potential memory leak detected', { id: key })
+        }
+      }
+    })
+
+    // Clean up detected leaks
+    leaks.forEach(id => {
+      this.leakDetection.delete(id)
+    })
+  }
+
+  /**
+   * Register element for leak detection
+   */
+  registerElement(id: string, element: HTMLElement): void {
+    if (typeof WeakRef === 'undefined') return
+
+    this.leakDetection.set(id, {
+      element: new WeakRef(element),
+      timestamp: Date.now()
+    })
+  }
+
+  /**
+   * Unregister element from leak detection
+   */
+  unregisterElement(id: string): void {
+    this.leakDetection.delete(id)
+  }
+
+  /**
    * Perform garbage collection
    */
   private performGC(): void {
+    const startTime = performance.now()
+
     // Run cleanup callbacks
     this.cleanup()
 
@@ -78,10 +151,23 @@ export class MemoryManager {
     if ('gc' in globalThis) {
       try {
         (globalThis as any).gc()
+        logger.debug('Manual GC triggered')
       } catch (e) {
         // GC not available
       }
     }
+
+    this.lastGCTime = Date.now()
+    const duration = performance.now() - startTime
+
+    logger.debug('GC performed', { duration: duration.toFixed(2) + 'ms' })
+  }
+
+  /**
+   * Force garbage collection
+   */
+  forceGC(): void {
+    this.performGC()
   }
 
   /**
@@ -186,14 +272,76 @@ export class MemoryManager {
   }
 
   /**
+   * Get memory statistics
+   */
+  getStats(): MemoryStats {
+    const stats: MemoryStats = {
+      elementPoolSize: this.elementPool.length,
+      cleanupCallbacks: this.cleanupCallbacks.length,
+      lastGC: this.lastGCTime
+    }
+
+    // Add heap stats if available
+    if ('memory' in performance) {
+      const memory = (performance as any).memory
+      stats.heapUsed = memory.usedJSHeapSize
+      stats.heapTotal = memory.totalJSHeapSize
+    }
+
+    return stats
+  }
+
+  /**
+   * Get memory usage percentage
+   */
+  getMemoryUsagePercent(): number | undefined {
+    if ('memory' in performance) {
+      const memory = (performance as any).memory
+      return (memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100
+    }
+    return undefined
+  }
+
+  /**
+   * Check if memory usage is high
+   */
+  isMemoryHigh(threshold = 80): boolean {
+    const usage = this.getMemoryUsagePercent()
+    return usage !== undefined && usage > threshold
+  }
+
+  /**
+   * Optimize memory if usage is high
+   */
+  optimizeIfNeeded(): void {
+    if (this.isMemoryHigh()) {
+      logger.warn('High memory usage detected, performing optimization')
+      this.performGC()
+
+      // Clear some of the element pool if it's large
+      if (this.elementPool.length > 50) {
+        this.elementPool.splice(50)
+      }
+    }
+  }
+
+  /**
    * Destroy and cleanup
    */
   destroy(): void {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval)
+      this.cleanupInterval = undefined
     }
+
+    if (this.leakCheckInterval) {
+      clearInterval(this.leakCheckInterval)
+      this.leakCheckInterval = undefined
+    }
+
     this.cleanup()
     this.elementPool = []
+    this.leakDetection.clear()
   }
 }
 

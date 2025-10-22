@@ -1,6 +1,7 @@
 /**
  * @ldesign/grid - Main entry point
  * Feature-rich GridStack wrapper for any framework
+ * @version 2.0.0
  */
 
 // Core exports
@@ -13,10 +14,24 @@ export { MemoryManager } from './core/MemoryManager'
 export { LayoutSerializer } from './core/LayoutSerializer'
 export { ResponsiveManager } from './core/ResponsiveManager'
 
+// v2.0 New managers
+export { HistoryManager } from './core/HistoryManager'
+export { KeyboardManager } from './core/KeyboardManager'
+export { AccessibilityManager } from './core/AccessibilityManager'
+export { SelectionManager } from './core/SelectionManager'
+export { LayoutEngine } from './core/LayoutEngine'
+export { AnimationManager } from './core/AnimationManager'
+export { VirtualScrollManager } from './core/VirtualScrollManager'
+export { BatchUpdateManager } from './core/BatchUpdateManager'
+export { ErrorHandler, ErrorCode, GridError } from './core/ErrorHandler'
+
 // Utilities
 export * from './utils/grid-utils'
 export * from './utils/collision'
 export { EventBus } from './utils/event-bus'
+export { Logger, LogLevel, logger } from './utils/logger'
+export { TouchHandler } from './utils/touch-handler'
+export { ExportHelper } from './utils/export-helper'
 
 // Types
 export type * from './types'

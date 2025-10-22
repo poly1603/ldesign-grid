@@ -43,6 +43,7 @@ export interface GridDragSourceProps {
   preview?: string | HTMLElement
   helper?: 'clone' | 'original'
   revert?: boolean
+  disabled?: boolean
 }
 
 

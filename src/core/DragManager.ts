@@ -1,16 +1,22 @@
 /**
  * Drag Manager - Handles external drag sources and drag operations
+ * Enhanced with touch support and drag copy
  */
 
 import type { DragSourceOptions, DragEventData, GridItemOptions, IGridInstance } from '../types'
 import { generateId, normalizeItemOptions } from '../utils/grid-utils'
+import { TouchHandler, type TouchEventData } from '../utils/touch-handler'
+import { logger } from '../utils/logger'
 
 export class DragManager {
   private grid: IGridInstance
   private dragSources = new WeakMap<HTMLElement, DragSourceOptions>()
+  private touchHandlers = new WeakMap<HTMLElement, TouchHandler>()
   private activeDrag: DragEventData | null = null
   private placeholder: HTMLElement | null = null
   private isDragging = false
+  private dragCopy = false // Ctrl+Drag to copy
+  private touchDragElement: HTMLElement | null = null
 
   constructor(grid: IGridInstance) {
     this.grid = grid
@@ -37,7 +43,7 @@ export class DragManager {
   }
 
   /**
-   * Register external drag source
+   * Register external drag source (supports both mouse and touch)
    */
   registerDragSource(element: HTMLElement, options: DragSourceOptions): () => void {
     // Store options
@@ -47,7 +53,7 @@ export class DragManager {
     element.setAttribute('draggable', 'true')
     element.classList.add('grid-drag-source')
 
-    // Add drag start listener
+    // Mouse drag handlers
     const handleDragStart = (e: DragEvent) => {
       this.handleDragStart(e, element, options)
     }
@@ -59,6 +65,15 @@ export class DragManager {
     element.addEventListener('dragstart', handleDragStart)
     element.addEventListener('dragend', handleDragEnd)
 
+    // Touch drag handlers
+    const touchHandler = new TouchHandler(element, {
+      onTouchStart: (data) => this.handleTouchDragStart(data, element, options),
+      onTouchMove: (data) => this.handleTouchDragMove(data),
+      onTouchEnd: (data) => this.handleTouchDragEnd(data)
+    })
+
+    this.touchHandlers.set(element, touchHandler)
+
     // Return cleanup function
     return () => {
       this.dragSources.delete(element)
@@ -66,6 +81,13 @@ export class DragManager {
       element.classList.remove('grid-drag-source')
       element.removeEventListener('dragstart', handleDragStart)
       element.removeEventListener('dragend', handleDragEnd)
+
+      // Cleanup touch handler
+      const handler = this.touchHandlers.get(element)
+      if (handler) {
+        handler.destroy()
+        this.touchHandlers.delete(element)
+      }
     }
   }
 
@@ -85,6 +107,9 @@ export class DragManager {
     if (!e.dataTransfer) return
 
     this.isDragging = true
+
+    // Check for copy mode (Ctrl/Cmd key)
+    this.dragCopy = e.ctrlKey || e.metaKey
 
     // Set drag data
     const dragData = {
@@ -175,7 +200,7 @@ export class DragManager {
         dropData = JSON.parse(jsonData)
       }
     } catch (error) {
-      console.error('Failed to parse drop data:', error)
+      logger.error('Failed to parse drop data', error)
     }
 
     // Calculate grid position
@@ -205,13 +230,21 @@ export class DragManager {
       new CustomEvent('item-dropped', {
         detail: {
           item,
-          data: this.activeDrag
+          data: this.activeDrag,
+          isCopy: this.dragCopy
         }
       })
     )
 
+    logger.info('Item dropped', {
+      id: item.id,
+      isCopy: this.dragCopy,
+      position: gridPos
+    })
+
     this.isDragging = false
     this.activeDrag = null
+    this.dragCopy = false
   }
 
   /**
@@ -347,6 +380,147 @@ export class DragManager {
   }
 
   /**
+   * Handle touch drag start
+   */
+  private handleTouchDragStart(data: TouchEventData, element: HTMLElement, options: DragSourceOptions): void {
+    this.isDragging = true
+    this.touchDragElement = element.cloneNode(true) as HTMLElement
+
+    // Style the drag element
+    Object.assign(this.touchDragElement.style, {
+      position: 'fixed',
+      left: `${data.currentX}px`,
+      top: `${data.currentY}px`,
+      opacity: '0.8',
+      pointerEvents: 'none',
+      zIndex: '10000',
+      transform: 'scale(1.1)'
+    })
+
+    document.body.appendChild(this.touchDragElement)
+
+    this.activeDrag = {
+      source: element,
+      data: options.data,
+      itemOptions: options.itemOptions,
+      event: null as any
+    }
+
+    element.classList.add('dragging')
+    logger.debug('Touch drag started', { element: element.className })
+  }
+
+  /**
+   * Handle touch drag move
+   */
+  private handleTouchDragMove(data: TouchEventData): void {
+    if (!this.isDragging || !this.touchDragElement) return
+
+    // Move the drag element
+    this.touchDragElement.style.left = `${data.currentX}px`
+    this.touchDragElement.style.top = `${data.currentY}px`
+
+    // Check if over grid
+    const gridRect = this.grid.container.getBoundingClientRect()
+    const isOverGrid =
+      data.currentX >= gridRect.left &&
+      data.currentX <= gridRect.right &&
+      data.currentY >= gridRect.top &&
+      data.currentY <= gridRect.bottom
+
+    if (isOverGrid) {
+      const x = data.currentX - gridRect.left
+      const y = data.currentY - gridRect.top
+      this.showPlaceholder(x, y)
+    } else {
+      this.removePlaceholder()
+    }
+  }
+
+  /**
+   * Handle touch drag end
+   */
+  private handleTouchDragEnd(data: TouchEventData): void {
+    if (!this.isDragging) return
+
+    // Remove touch drag element
+    if (this.touchDragElement && this.touchDragElement.parentNode) {
+      this.touchDragElement.parentNode.removeChild(this.touchDragElement)
+      this.touchDragElement = null
+    }
+
+    // Check if dropped on grid
+    const gridRect = this.grid.container.getBoundingClientRect()
+    const isOverGrid =
+      data.currentX >= gridRect.left &&
+      data.currentX <= gridRect.right &&
+      data.currentY >= gridRect.top &&
+      data.currentY <= gridRect.bottom
+
+    if (isOverGrid && this.activeDrag) {
+      // Calculate grid position
+      const x = data.currentX - gridRect.left
+      const y = data.currentY - gridRect.top
+      const gridPos = this.calculateGridPosition(x, y)
+
+      // Create item options
+      const itemOptions: GridItemOptions = {
+        ...normalizeItemOptions(this.activeDrag.itemOptions || {}),
+        x: gridPos.x,
+        y: gridPos.y,
+        autoPosition: true
+      }
+
+      // Create new grid item
+      const element = this.createItemElement(this.activeDrag.data)
+      const item = this.grid.addItem(element, itemOptions)
+
+      // Emit event
+      this.grid.container.dispatchEvent(
+        new CustomEvent('item-dropped', {
+          detail: {
+            item,
+            data: this.activeDrag,
+            isTouch: true
+          }
+        })
+      )
+
+      logger.info('Touch item dropped', { id: item.id, position: gridPos })
+    }
+
+    // Cleanup
+    if (this.activeDrag) {
+      this.activeDrag.source.classList.remove('dragging')
+    }
+
+    this.removePlaceholder()
+    this.isDragging = false
+    this.activeDrag = null
+  }
+
+  /**
+   * Enable drag copy mode
+   */
+  enableDragCopy(): void {
+    this.dragCopy = true
+  }
+
+  /**
+   * Disable drag copy mode
+   */
+  disableDragCopy(): void {
+    this.dragCopy = false
+  }
+
+  /**
+   * Check if drag copy is enabled
+   */
+  isDragCopyEnabled(): boolean {
+    return this.dragCopy
+  }
+
+  /**
    * Destroy drag manager
    */
   destroy(): void {
@@ -355,9 +529,19 @@ export class DragManager {
     container.removeEventListener('drop', this.handleDrop)
     container.removeEventListener('dragleave', this.handleDragLeave)
 
+    // Destroy all touch handlers
+    this.touchHandlers.forEach(handler => handler.destroy())
+    this.touchHandlers = new WeakMap()
+
+    // Remove touch drag element if exists
+    if (this.touchDragElement && this.touchDragElement.parentNode) {
+      this.touchDragElement.parentNode.removeChild(this.touchDragElement)
+    }
+
     this.removePlaceholder()
     this.isDragging = false
     this.activeDrag = null
+    this.touchDragElement = null
   }
 }
 

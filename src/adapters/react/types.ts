@@ -42,7 +42,12 @@ export interface GridDragSourceProps {
   preview?: string | HTMLElement
   helper?: 'clone' | 'original'
   revert?: boolean
-  children?: ReactNode
+  disabled?: boolean
+  onDragStart?: (data: any) => void
+  onDragEnd?: (data: any) => void
+  onDropped?: (target: any, data: any) => void
+  onClick?: (e: React.MouseEvent<HTMLDivElement>) => void
+  children?: ReactNode | ((state: { isDragging: boolean; isTouchDragging: boolean; isInsideGrid: boolean }) => ReactNode)
   className?: string
   style?: React.CSSProperties
 }
