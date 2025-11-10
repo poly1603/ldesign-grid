@@ -59,8 +59,7 @@
     "example:vue": "vite examples/vue",
     "example:react": "vite examples/react",
     "example:lit": "vite examples/lit",
-    "example:all": "vite examples",
-    "prepublishOnly": "npm run build:optimized && npm run test:unit"
+    "example:all": "vite examples"
   },
   "keywords": [
     "gridstack",
@@ -126,16 +125,3 @@
     }
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
