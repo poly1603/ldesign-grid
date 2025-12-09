@@ -1,26 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
-import { Grid } from '../../utils/grid';
+import { ref } from 'vue';
+import { useGrid } from '@ldesign/grid-vue';
 import { Zap, Code, Plus, Trash2 } from 'lucide-vue-next';
 
-const containerRef = ref<HTMLElement | null>(null);
-let grid: Grid | null = null;
 const eventLog = ref<string[]>([]);
 const showCode = ref(false);
-
-const code = `// 监听变化事件
-grid.onChange((items) => {
-  console.log('布局变化:', items);
-});
-
-// 监听自定义事件
-grid.on('dragstart', (data) => {
-  console.log('开始拖拽:', data.item);
-});
-
-grid.on('dragend', (data) => {
-  console.log('结束拖拽:', data.item);
-});`;
 
 const addLog = (msg: string) => {
   const time = new Date().toLocaleTimeString();
@@ -28,29 +12,51 @@ const addLog = (msg: string) => {
   if (eventLog.value.length > 20) eventLog.value.pop();
 };
 
-const addWidget = () => {
-  if (!grid) return;
+// 使用 useGrid composable
+const { containerRef, items, addWidget, on } = useGrid({
+  column: 12,
+  cellHeight: 80,
+  gap: 10,
+  margin: 10,
+  items: [
+    { id: '1', x: 0, y: 0, w: 4, h: 2, content: '<div class="widget-content">组件 1</div>' },
+    { id: '2', x: 4, y: 0, w: 4, h: 1, content: '<div class="widget-content">组件 2</div>' },
+    { id: '3', x: 8, y: 0, w: 4, h: 2, content: '<div class="widget-content">组件 3</div>' },
+  ],
+});
+
+// 事件监听
+on('change', ({ items }) => addLog(`布局变化: ${items.length}个组件`));
+on('dragstart', ({ item }) => addLog(`开始拖拽: ${item.id}`));
+on('dragend', ({ item }) => addLog(`结束拖拽: ${item.id} -> (${item.x}, ${item.y})`));
+addLog('网格初始化完成');
+
+const handleAddWidget = () => {
   const w = 2 + Math.floor(Math.random() * 2);
   const h = 1 + Math.floor(Math.random() * 2);
-  grid.addWidget({ w, h, content: `<div class="widget-content">${w}×${h}</div>` });
+  addWidget({ w, h, content: `<div class="widget-content">${w}×${h}</div>` });
   addLog(`添加组件 (${w}×${h})`);
 };
 
 const clearLog = () => { eventLog.value = []; };
 
-onMounted(() => {
-  if (!containerRef.value) return;
-  grid = new Grid(containerRef.value, { column: 12, cellHeight: 80, gap: 10, margin: 10 });
-  grid.addWidget({ x: 0, y: 0, w: 4, h: 2, content: '<div class="widget-content">组件 1</div>' });
-  grid.addWidget({ x: 4, y: 0, w: 4, h: 1, content: '<div class="widget-content">组件 2</div>' });
-  grid.addWidget({ x: 8, y: 0, w: 4, h: 2, content: '<div class="widget-content">组件 3</div>' });
-  grid.onChange((items) => addLog(`布局变化: ${items.length}个组件`));
-  grid.on('dragstart', (data) => addLog(`开始拖拽: ${data.item.id}`));
-  grid.on('dragend', (data) => addLog(`结束拖拽: ${data.item.id} -> (${data.item.x}, ${data.item.y})`));
-  addLog('网格初始化完成');
+const code = `import { useGrid } from '@ldesign/grid-vue';
+
+const { containerRef, on } = useGrid({ /* options */ });
+
+// 监听变化事件
+on('change', ({ items }) => {
+  console.log('布局变化:', items);
 });
 
-onUnmounted(() => grid?.destroy());
+// 监听拖拽事件
+on('dragstart', ({ item }) => {
+  console.log('开始拖拽:', item);
+});
+
+on('dragend', ({ item }) => {
+  console.log('结束拖拽:', item);
+});`;
 </script>
 
 <template>
@@ -60,7 +66,7 @@ onUnmounted(() => grid?.destroy());
       <p class="page-description">监听网格的各种事件，如拖拽开始/结束、布局变化等。</p>
     </div>
     <div class="toolbar">
-      <button class="btn btn-primary btn-sm" @click="addWidget"><Plus :size="14" /> 添加组件</button>
+      <button class="btn btn-primary btn-sm" @click="handleAddWidget"><Plus :size="14" /> 添加组件</button>
       <button class="btn btn-secondary btn-sm" @click="clearLog"><Trash2 :size="14" /> 清空日志</button>
       <div class="toolbar-divider"></div>
       <button class="btn btn-secondary btn-sm" @click="showCode = !showCode"><Code :size="14" /> {{ showCode ? '隐藏' : '查看' }}代码</button>

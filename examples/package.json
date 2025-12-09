@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ldesign/grid-core": "workspace:*",
+    "@ldesign/grid-vue": "workspace:*",
     "lucide-vue-next": "^0.556.0",
     "vue": "^3.4.0",
     "vue-router": "^4.2.0"

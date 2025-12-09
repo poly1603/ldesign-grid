@@ -160,8 +160,10 @@ export class DragHandler<T = unknown> {
       item.x = item._tempRect.x;
       item.y = item._tempRect.y;
     }
+    // 在cleanupDrag之前获取eventData，因为cleanupDrag会清空dragState
+    const eventData = this.createEventData();
     this.cleanupDrag();
-    this.callbacks.onDragEnd?.(this.createEventData());
+    this.callbacks.onDragEnd?.(eventData);
     item._isDragging = false;
     item._tempRect = undefined;
     item._originalRect = undefined;

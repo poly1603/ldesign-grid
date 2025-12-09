@@ -31,19 +31,33 @@ export interface GridProps {
 }
 
 export interface GridItemProps {
-  id: ItemId;
+  /** 组件ID，不传则自动生成 */
+  id?: ItemId;
+  /** 列位置 */
   x?: number;
+  /** 行位置 */
   y?: number;
+  /** 宽度（列数） */
   w?: number;
+  /** 高度（行数） */
   h?: number;
+  /** 最小宽度 */
   minW?: number;
+  /** 最大宽度 */
   maxW?: number;
+  /** 最小高度 */
   minH?: number;
+  /** 最大高度 */
   maxH?: number;
+  /** 是否静态（不可拖拽/调整大小） */
   static?: boolean;
+  /** 是否可拖拽 */
   draggable?: boolean;
+  /** 是否可调整大小 */
   resizable?: boolean;
+  /** 是否锁定 */
   locked?: boolean;
+  /** 是否自动定位 */
   autoPosition?: boolean;
 }
 

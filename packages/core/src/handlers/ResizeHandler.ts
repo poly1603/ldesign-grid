@@ -174,8 +174,10 @@ export class ResizeHandler<T = unknown> {
       item.w = item._tempRect.w;
       item.h = item._tempRect.h;
     }
+    // 在cleanupResize之前获取eventData，因为cleanupResize会清空resizeState
+    const eventData = this.createEventData();
     this.cleanupResize();
-    this.callbacks.onResizeEnd?.(this.createEventData());
+    this.callbacks.onResizeEnd?.(eventData);
     item._isResizing = false;
     item._tempRect = undefined;
     item._originalRect = undefined;

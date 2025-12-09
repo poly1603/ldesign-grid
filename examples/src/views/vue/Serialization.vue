@@ -1,56 +1,60 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { Grid } from '../../utils/grid';
+import { ref, computed } from 'vue';
+import { useGrid } from '@ldesign/grid-vue';
 import { Save, Upload, RotateCcw, Code } from 'lucide-vue-next';
 
-const containerRef = ref<HTMLElement | null>(null);
-let grid: Grid | null = null;
-const savedLayout = ref<any[]>([]);
 const showCode = ref(false);
 
-const jsonOutput = computed(() => JSON.stringify(savedLayout.value, null, 2));
+const initialItems = [
+  { id: '1', x: 0, y: 0, w: 4, h: 2, content: '<div class="widget-content">组件 1</div>' },
+  { id: '2', x: 4, y: 0, w: 4, h: 1, content: '<div class="widget-content">组件 2</div>' },
+  { id: '3', x: 8, y: 0, w: 4, h: 2, content: '<div class="widget-content">组件 3</div>' },
+];
 
-const code = `// 保存布局
-const layout = grid.save();
+const { containerRef, items, save, load, removeAll, addWidgets, on } = useGrid({
+  column: 12,
+  cellHeight: 80,
+  gap: 10,
+  margin: 10,
+  items: initialItems,
+});
+
+const jsonOutput = computed(() => JSON.stringify(items.value.map(i => ({ id: i.id, x: i.x, y: i.y, w: i.w, h: i.h })), null, 2));
+
+const saveToStorage = () => {
+  localStorage.setItem('grid-demo-layout', JSON.stringify(save()));
+  alert('已保存到 localStorage！');
+};
+
+const loadFromStorage = () => {
+  const data = localStorage.getItem('grid-demo-layout');
+  if (data) { load(JSON.parse(data)); alert('已加载！'); }
+  else alert('没有保存的布局');
+};
+
+const resetLayout = () => {
+  removeAll();
+  addWidgets(initialItems);
+};
+
+const code = `import { useGrid } from '@ldesign/grid-vue';
+
+const { save, load, on } = useGrid({ /* options */ });
+
+// 保存布局
+const layout = save();
 localStorage.setItem('layout', JSON.stringify(layout));
 
 // 加载布局
 const saved = localStorage.getItem('layout');
 if (saved) {
-  grid.load(JSON.parse(saved));
+  load(JSON.parse(saved));
 }
 
 // 监听变化自动保存
-grid.onChange((items) => {
+on('change', ({ items }) => {
   localStorage.setItem('layout', JSON.stringify(items));
 });`;
-
-const updateSaved = () => { savedLayout.value = grid?.save() || []; };
-const saveToStorage = () => { localStorage.setItem('grid-demo-layout', JSON.stringify(grid?.save())); updateSaved(); alert('已保存到 localStorage！'); };
-const loadFromStorage = () => {
-  const data = localStorage.getItem('grid-demo-layout');
-  if (data && grid) { grid.load(JSON.parse(data)); updateSaved(); alert('已加载！'); }
-  else alert('没有保存的布局');
-};
-const resetLayout = () => {
-  grid?.removeAll();
-  grid?.addWidget({ x: 0, y: 0, w: 4, h: 2, content: '<div class="widget-content">组件 1</div>' });
-  grid?.addWidget({ x: 4, y: 0, w: 4, h: 1, content: '<div class="widget-content">组件 2</div>' });
-  grid?.addWidget({ x: 8, y: 0, w: 4, h: 2, content: '<div class="widget-content">组件 3</div>' });
-  updateSaved();
-};
-
-onMounted(() => {
-  if (!containerRef.value) return;
-  grid = new Grid(containerRef.value, { column: 12, cellHeight: 80, gap: 10, margin: 10 });
-  grid.addWidget({ x: 0, y: 0, w: 4, h: 2, content: '<div class="widget-content">组件 1</div>' });
-  grid.addWidget({ x: 4, y: 0, w: 4, h: 1, content: '<div class="widget-content">组件 2</div>' });
-  grid.addWidget({ x: 8, y: 0, w: 4, h: 2, content: '<div class="widget-content">组件 3</div>' });
-  grid.onChange(updateSaved);
-  updateSaved();
-});
-
-onUnmounted(() => grid?.destroy());
 </script>
 
 <template>

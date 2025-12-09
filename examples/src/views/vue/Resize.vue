@@ -1,32 +1,26 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
-import { Grid } from '../../utils/grid';
+import { ref } from 'vue';
+import { Grid, GridItem } from '@ldesign/grid-vue';
 import { Maximize2, Code, Info } from 'lucide-vue-next';
 
-const containerRef = ref<HTMLElement | null>(null);
-let grid: Grid | null = null;
 const showCode = ref(false);
 
-const code = `// 添加带约束的组件
-grid.addWidget({
-  x: 0, y: 0, w: 4, h: 2,
-  minW: 2,  // 最小宽度
-  maxW: 6,  // 最大宽度
-  minH: 1,  // 最小高度
-  maxH: 4,  // 最大高度
-  content: '<div>有约束的组件</div>',
-});`;
-
-onMounted(() => {
-  if (!containerRef.value) return;
-  grid = new Grid(containerRef.value, { column: 12, cellHeight: 80, gap: 10, margin: 10 });
-  grid.addWidget({ x: 0, y: 0, w: 4, h: 2, content: '<div class="widget-content">无约束</div>' });
-  grid.addWidget({ x: 4, y: 0, w: 4, h: 2, minW: 2, maxW: 6, content: '<div class="widget-content">minW:2 maxW:6</div>' });
-  grid.addWidget({ x: 8, y: 0, w: 4, h: 2, minH: 2, maxH: 4, content: '<div class="widget-content">minH:2 maxH:4</div>' });
-  grid.addWidget({ x: 0, y: 2, w: 6, h: 2, minW: 3, maxW: 8, minH: 1, maxH: 3, content: '<div class="widget-content">minW:3 maxW:8<br>minH:1 maxH:3</div>' });
-});
-
-onUnmounted(() => grid?.destroy());
+const code = `<Grid :column="12" :cell-height="80">
+  <!-- 无约束 -->
+  <GridItem id="1" :x="0" :y="0" :w="4" :h="2">
+    <MyWidget />
+  </GridItem>
+  
+  <!-- 宽度约束 -->
+  <GridItem id="2" :x="4" :y="0" :w="4" :h="2" :min-w="2" :max-w="6">
+    <MyWidget />
+  </GridItem>
+  
+  <!-- 高度约束 -->
+  <GridItem id="3" :x="8" :y="0" :w="4" :h="2" :min-h="2" :max-h="4">
+    <MyWidget />
+  </GridItem>
+</Grid>`;
 </script>
 
 <template>
@@ -44,7 +38,25 @@ onUnmounted(() => grid?.destroy());
     </div>
     <div class="card">
       <div class="card-header"><span class="card-title"><Maximize2 :size="16" /> 可调整大小的组件</span></div>
-      <div class="card-body card-body-flush"><div ref="containerRef" style="min-height: 400px;"></div></div>
+      <div class="card-body card-body-flush">
+        <Grid :column="12" :cell-height="80" :gap="10" :margin="10" style="min-height: 400px;">
+          <GridItem id="resize-1" :x="0" :y="0" :w="4" :h="2">
+            <div class="resize-widget">无约束</div>
+          </GridItem>
+          
+          <GridItem id="resize-2" :x="4" :y="0" :w="4" :h="2" :min-w="2" :max-w="6">
+            <div class="resize-widget resize-widget-blue">minW:2 maxW:6</div>
+          </GridItem>
+          
+          <GridItem id="resize-3" :x="8" :y="0" :w="4" :h="2" :min-h="2" :max-h="4">
+            <div class="resize-widget resize-widget-green">minH:2 maxH:4</div>
+          </GridItem>
+          
+          <GridItem id="resize-4" :x="0" :y="2" :w="6" :h="2" :min-w="3" :max-w="8" :min-h="1" :max-h="3">
+            <div class="resize-widget resize-widget-orange">minW:3 maxW:8<br>minH:1 maxH:3</div>
+          </GridItem>
+        </Grid>
+      </div>
     </div>
     <div v-if="showCode" class="card">
       <div class="card-header"><span class="card-title"><Code :size="16" /> 代码示例</span></div>
@@ -52,3 +64,21 @@ onUnmounted(() => grid?.destroy());
     </div>
   </div>
 </template>
+
+<style scoped>
+.resize-widget {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: #e0f2fe;
+  border: 2px dashed #0ea5e9;
+  border-radius: 8px;
+  color: #0369a1;
+  font-weight: 500;
+  text-align: center;
+}
+.resize-widget-blue { background: #dbeafe; border-color: #3b82f6; color: #1d4ed8; }
+.resize-widget-green { background: #d1fae5; border-color: #10b981; color: #047857; }
+.resize-widget-orange { background: #fef3c7; border-color: #f59e0b; color: #b45309; }
+</style>

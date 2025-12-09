@@ -1,38 +1,39 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
-import { Grid } from '../../utils/grid';
+import { ref, watch } from 'vue';
+import { useGrid } from '@ldesign/grid-vue';
 import { Lock, Unlock, Code, Info } from 'lucide-vue-next';
 
-const containerRef = ref<HTMLElement | null>(null);
-let grid: Grid | null = null;
 const staticMode = ref(false);
 const showCode = ref(false);
 
-const code = `// 静态网格
-const grid = new Grid(container);
+const { containerRef, enable, disable } = useGrid({
+  column: 12,
+  cellHeight: 80,
+  gap: 10,
+  margin: 10,
+  items: [
+    { id: '1', x: 0, y: 0, w: 4, h: 2, content: '<div class="widget-content">可拖拽</div>' },
+    { id: '2', x: 4, y: 0, w: 4, h: 2, static: true, content: '<div class="widget-content static-item">静态组件<br><small>不可拖拽</small></div>' },
+    { id: '3', x: 8, y: 0, w: 4, h: 2, content: '<div class="widget-content">可拖拽</div>' },
+    { id: '4', x: 0, y: 2, w: 4, h: 1, content: '<div class="widget-content">可拖拽</div>' },
+  ],
+});
+
+watch(staticMode, (val) => val ? disable() : enable());
+
+const code = `import { useGrid } from '@ldesign/grid-vue';
+
+const { enable, disable } = useGrid({ /* options */ });
 
 // 添加静态组件（不可拖拽）
-grid.addWidget({
+addWidget({
   x: 4, y: 0, w: 4, h: 2,
   static: true,
 });
 
 // 禁用/启用整个网格
-grid.setStatic(true);  // 禁用
-grid.setStatic(false); // 启用`;
-
-watch(staticMode, (val) => grid?.setStatic(val));
-
-onMounted(() => {
-  if (!containerRef.value) return;
-  grid = new Grid(containerRef.value, { column: 12, cellHeight: 80, gap: 10, margin: 10 });
-  grid.addWidget({ x: 0, y: 0, w: 4, h: 2, content: '<div class="widget-content">可拖拽</div>' });
-  grid.addWidget({ x: 4, y: 0, w: 4, h: 2, static: true, content: '<div class="widget-content static-item">静态组件<br><small>不可拖拽</small></div>' });
-  grid.addWidget({ x: 8, y: 0, w: 4, h: 2, content: '<div class="widget-content">可拖拽</div>' });
-  grid.addWidget({ x: 0, y: 2, w: 4, h: 1, content: '<div class="widget-content">可拖拽</div>' });
-});
-
-onUnmounted(() => grid?.destroy());
+disable();  // 禁用所有交互
+enable();   // 启用交互`;
 </script>
 
 <template>
