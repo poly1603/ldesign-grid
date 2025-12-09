@@ -1,0 +1,22 @@
+{
+  "name": "@ldesign/grid-examples",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "lucide-vue-next": "^0.556.0",
+    "vue": "^3.4.0",
+    "vue-router": "^4.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "5.0.0",
+    "typescript": "5.3.3",
+    "vite": "5.4.0",
+    "vue-tsc": "2.0.0"
+  }
+}

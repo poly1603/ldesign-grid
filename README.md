@@ -1,269 +1,192 @@
 # @ldesign/grid
 
-> v2.0.0 - 功能强大、高性能的 GridStack 封装库，支持任何框架
+高性能、功能丰富的网格布局插件，类似 gridstack.js 但具有更好的架构和用户体验。
 
-一个企业级网格布局解决方案，提供完整的拖拽功能、性能优化、无障碍访问，特别优化了 Vue 和 React 的使用体验。
+## ✨ 特性
 
-## ✨ 主要特性
+- 🚀 **高性能** - 优化的布局算法和DOM操作
+- 📦 **框架无关** - 核心包可独立使用
+- 🎯 **Vue 3 支持** - 提供完整的Vue适配器
+- 🖱️ **拖拽 & 调整大小** - 流畅的交互体验
+- 📥 **外部拖入** - 支持从网格外部拖入元素
+- 📱 **触摸支持** - 完整的移动端支持
+- 🎨 **可定制** - 丰富的配置选项和样式
+- 💪 **TypeScript** - 完整的类型定义
 
-### 核心功能
-✨ **框架无关** - 完美支持 Vue 3、React、Lit 或原生 JavaScript  
-🎯 **外部拖拽** - 从任何地方拖拽元素到网格，支持触摸设备  
-🔄 **嵌套网格** - 支持多层嵌套网格布局  
-⚡ **极致性能** - 虚拟滚动优化，支持 1000+ 项目流畅运行  
-🎨 **丰富配置** - 广泛的自定义选项  
-📱 **响应式** - 内置响应式布局管理  
-💾 **序列化** - 轻松保存和恢复布局  
-🎭 **预设布局** - 8种常用布局模板
-
-### v2.0 新增功能
-⏮️ **撤销/重做** - 完整的操作历史管理，Ctrl+Z/Y  
-⌨️ **键盘导航** - 方向键、Tab键、完整快捷键系统  
-♿ **无障碍访问** - WCAG 2.1 兼容，ARIA 完整支持  
-🎯 **多选操作** - 框选、批量编辑、对齐、分布  
-🎨 **自动布局** - 5种智能布局算法  
-🎬 **动画系统** - 6种动画预设，流畅过渡  
-📊 **导出增强** - 支持图片、SVG、CSV、IndexedDB  
-📱 **触摸优化** - 完美的移动端拖拽体验  
-
-## Installation
+## 📦 安装
 
 ```bash
-npm install @ldesign/grid
-# or
-pnpm add @ldesign/grid
-# or
-yarn add @ldesign/grid
+# 核心包
+pnpm add @ldesign/grid-core
+
+# Vue 3 适配器
+pnpm add @ldesign/grid-vue
 ```
 
-You'll also need to install the gridstack CSS:
+## 🚀 快速开始
 
-```css
-@import 'gridstack/dist/gridstack.min.css';
-```
+### 原生 JavaScript
 
-## Quick Start
+```typescript
+import { Grid } from '@ldesign/grid-core';
+import '@ldesign/grid-core/css';
 
-### Vanilla JavaScript
-
-```javascript
-import { GridManager } from '@ldesign/grid'
-
-const manager = GridManager.getInstance()
-const grid = manager.create(document.getElementById('grid'), {
+const grid = new Grid('#container', {
   column: 12,
-  cellHeight: 70,
-  acceptWidgets: true
-})
+  cellHeight: 80,
+  gap: 10,
+  draggable: true,
+  resizable: true,
+});
 
-grid.addItem(element, { x: 0, y: 0, w: 2, h: 2 })
+// 添加项目
+grid.addWidget({ x: 0, y: 0, w: 2, h: 2, content: '<h3>Widget 1</h3>' });
+grid.addWidget({ w: 3, h: 1, autoPosition: true });
+
+// 保存/加载布局
+const layout = grid.save();
+grid.load(layout);
 ```
 
 ### Vue 3
 
 ```vue
-<template>
-  <div class="demo">
-    <div class="toolbar">
-      <GridDragSource 
-        v-for="widget in widgets"
-        :key="widget.id"
-        :data="widget"
-      >
-        {{ widget.name }}
-      </GridDragSource>
-    </div>
-    
-    <GridStack :options="{ column: 12, cellHeight: 70 }">
-      <GridItem 
-        v-for="item in items"
-        :key="item.id"
-        v-bind="item"
-      >
-        {{ item.content }}
-      </GridItem>
-    </GridStack>
-  </div>
-</template>
+<script setup lang="ts">
+import { ref } from 'vue';
+import { GridStack, useGrid } from '@ldesign/grid-vue';
 
-<script setup>
-import { GridStack, GridItem, GridDragSource } from '@ldesign/grid/vue'
+const items = ref([
+  { id: '1', x: 0, y: 0, w: 2, h: 2, content: 'Widget 1' },
+  { id: '2', x: 2, y: 0, w: 3, h: 1, content: 'Widget 2' },
+]);
 
-const widgets = [
-  { id: 1, name: 'Chart', w: 4, h: 3 },
-  { id: 2, name: 'Table', w: 6, h: 4 }
-]
+// 或使用 composable
+const { containerRef, addWidget, removeWidget, save, load } = useGrid({
+  column: 12,
+  cellHeight: 80,
+  items: items.value,
+});
 </script>
+
+<template>
+  <GridStack v-model="items" :column="12" :cell-height="80">
+    <template #default="{ items }">
+      <div v-for="item in items" :key="item.id">
+        {{ item.content }}
+      </div>
+    </template>
+  </GridStack>
+</template>
 ```
 
-### React
+## 📖 配置选项
 
-```tsx
-import { GridStack, GridItem, GridDragSource } from '@ldesign/grid/react'
+| 选项 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `column` | `number` | `12` | 列数 |
+| `cellHeight` | `number \| 'auto'` | `80` | 单元格高度 |
+| `gap` | `number` | `10` | 项目间距 |
+| `margin` | `number \| Margin` | `10` | 网格边距 |
+| `draggable` | `boolean` | `true` | 启用拖拽 |
+| `resizable` | `boolean` | `true` | 启用调整大小 |
+| `animate` | `boolean \| AnimationConfig` | `true` | 启用动画 |
+| `float` | `boolean` | `false` | 浮动模式 |
+| `compact` | `boolean` | `true` | 自动压缩 |
+| `collision` | `'push' \| 'swap' \| 'none'` | `'push'` | 碰撞处理模式 |
+| `acceptWidgets` | `boolean \| string` | `false` | 接受外部拖入 |
+| `touch` | `boolean` | `true` | 触摸支持 |
 
-function App() {
-  const widgets = [
-    { id: 1, name: 'Chart', w: 4, h: 3 },
-    { id: 2, name: 'Table', w: 6, h: 4 }
-  ]
-  
-  return (
-    <div className="demo">
-      <div className="toolbar">
-        {widgets.map(widget => (
-          <GridDragSource key={widget.id} data={widget}>
-            {widget.name}
-          </GridDragSource>
-        ))}
-      </div>
-      
-      <GridStack options={{ column: 12, cellHeight: 70 }}>
-        {items.map(item => (
-          <GridItem key={item.id} {...item}>
-            {item.content}
-          </GridItem>
-        ))}
-      </GridStack>
-    </div>
-  )
+## 🔧 API
+
+### Grid 方法
+
+```typescript
+// 添加项目
+grid.addWidget(data: Partial<GridItemData>): GridItem;
+grid.addWidgets(items: Partial<GridItemData>[]): GridItem[];
+
+// 移除项目
+grid.removeWidget(id: ItemId): boolean;
+grid.removeAll(): void;
+
+// 更新项目
+grid.updateWidget(id: ItemId, updates: Partial<GridItemData>): boolean;
+grid.moveWidget(id: ItemId, x: number, y: number): boolean;
+grid.resizeWidget(id: ItemId, w: number, h: number): boolean;
+
+// 布局操作
+grid.compact(): void;
+grid.save(): GridItemData[];
+grid.load(items: GridItemData[]): void;
+
+// 状态控制
+grid.enable(): void;
+grid.disable(): void;
+grid.setOptions(options: Partial<GridOptions>): void;
+
+// 事件
+grid.on(event: string, handler: Function): () => void;
+grid.off(event: string, handler: Function): void;
+```
+
+### 事件
+
+| 事件 | 说明 |
+|------|------|
+| `change` | 布局变更 |
+| `dragstart` | 开始拖拽 |
+| `drag` | 拖拽中 |
+| `dragend` | 结束拖拽 |
+| `resizestart` | 开始调整大小 |
+| `resize` | 调整大小中 |
+| `resizeend` | 结束调整大小 |
+| `added` | 添加项目 |
+| `removed` | 移除项目 |
+| `dropped` | 外部拖入 |
+
+## 🎨 样式定制
+
+```css
+/* 自定义项目样式 */
+.grid-item-content {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+/* 自定义占位符 */
+.grid-placeholder {
+  background: rgba(0, 120, 255, 0.1);
+  border: 2px dashed rgba(0, 120, 255, 0.4);
+}
+
+/* 暗色主题 */
+.grid-container.dark .grid-item-content {
+  background: #1e1e1e;
+  color: #fff;
 }
 ```
 
-### Lit
+## 📁 项目结构
 
-```typescript
-import '@ldesign/grid/lit'
-
-html`
-  <grid-stack .options=${{ column: 12, cellHeight: 70 }}>
-    <grid-item .x=${0} .y=${0} .w=${2} .h=${2}>
-      Content here
-    </grid-item>
-  </grid-stack>
-`
 ```
-
-## 📚 Documentation
-
-### 中文文档
-- [完整中文文档](./docs/zh-CN/README.md) 📖
-
-### English Guides
-- [Installation Guide](./docs/guide/installation.md)
-- [Quick Start](./docs/guide/quick-start.md)
-- [External Drag Complete Guide](./docs/guide/external-drag.md) ⭐
-- [Configuration](./docs/guide/configuration.md)
-- [Drag from Outside](./docs/guide/drag-from-outside.md)
-- [Nested Grids](./docs/guide/nested-grids.md)
-- [Performance Optimization](./docs/guide/performance.md)
-- [Accessibility](./docs/guide/accessibility.md)
-- [API Reference](./docs/api/)
-
-### Progress Reports
-- [Optimization Progress](./OPTIMIZATION_PROGRESS.md)
-- [Feature Summary](./FEATURE_SUMMARY.md)
-- [Final Report](./FINAL_COMPLETION_REPORT.md)
-- [Changelog](./CHANGELOG.md)
-
-## Examples
-
-Check out the [examples](./examples) folder for complete working examples:
-
-- [Vanilla JS Example](./examples/vanilla)
-- [Vue 3 Example](./examples/vue)
-- [React Example](./examples/react)
-- [Lit Example](./examples/lit)
-
-## 🎯 Performance
-
-### Benchmark Results
-
-| Grid Size | v1.0 FPS | v2.0 FPS | Improvement |
-|-----------|----------|----------|-------------|
-| 50 items  | 60       | 60       | -           |
-| 100 items | 25       | 58       | **2.3x**    |
-| 500 items | 5        | 55       | **11x**     |
-| 1000 items| 2        | 54       | **27x**     |
-
-### Memory Usage
-
-| Items | v1.0  | v2.0  | Saved  |
-|-------|-------|-------|--------|
-| 100   | 45 MB | 28 MB | **38%** |
-| 500   | 180 MB| 95 MB | **47%** |
-
-## 🧪 Testing
-
-```bash
-# Run unit tests
-npm run test:unit
-
-# Run with coverage
-npm run test:coverage
-
-# Run E2E tests
-npm run test:e2e
-
-# Run E2E with UI
-npm run test:e2e:ui
+packages/
+├── core/                 # 核心包 (框架无关)
+│   └── src/
+│       ├── types/        # 类型定义
+│       ├── utils/        # 工具函数
+│       ├── engine/       # 布局引擎
+│       ├── handlers/     # 拖拽/调整大小处理器
+│       ├── core/         # Grid主类
+│       └── styles/       # CSS样式
+│
+└── vue/                  # Vue 3 适配器
+    └── src/
+        ├── components/   # Vue组件
+        ├── composables/  # Vue composables
+        └── types.ts      # 类型定义
 ```
-
-## 🛠️ Development
-
-```bash
-# Install dependencies
-pnpm install
-
-# Start dev server
-pnpm dev
-
-# Build library
-pnpm build
-
-# Lint
-pnpm lint
-
-# Format code
-pnpm format
-
-# Type check
-pnpm typecheck
-
-# Generate API docs
-pnpm docs:api
-```
-
-## 🤝 Contributing
-
-Contributions are welcome! Please read our contributing guidelines.
 
 ## 📄 License
 
-MIT License - see [LICENSE](./LICENSE) file for details
-
-## 🙏 Credits
-
-Built on top of the excellent [GridStack.js](https://gridstackjs.com/)
-
-## 🌟 Sponsors
-
-Support this project by becoming a sponsor!
-
----
-
-**Version**: 2.0.0  
-**Author**: LDesign Team  
-**Repository**: https://github.com/ldesign/grid
-
-
-
-
-
-
-
-
-
-
-
-
-
+MIT

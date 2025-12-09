@@ -1,0 +1,42 @@
+{
+  "name": "@ldesign/grid-core",
+  "version": "1.0.0",
+  "description": "High-performance, framework-agnostic grid layout engine",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./css": "./dist/grid.css"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "grid",
+    "layout",
+    "dashboard",
+    "drag-and-drop",
+    "resize",
+    "framework-agnostic",
+    "typescript"
+  ],
+  "author": "LDesign Team",
+  "license": "MIT",
+  "sideEffects": false,
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.3"
+  }
+}

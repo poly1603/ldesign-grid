@@ -1,0 +1,198 @@
+/**
+ * @ldesign/grid-core 默认样式
+ */
+
+/* ==================== 容器 ==================== */
+.grid-container {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.grid-container.grid-disabled {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* ==================== 网格项 ==================== */
+.grid-item {
+  position: absolute;
+  box-sizing: border-box;
+  z-index: 1;
+  transition: transform 200ms ease, width 200ms ease, height 200ms ease;
+  will-change: transform;
+}
+
+.grid-item.grid-item-dragging,
+.grid-item.grid-item-resizing {
+  z-index: 100;
+  opacity: 0.9;
+  transition: none !important;
+  cursor: grabbing;
+}
+
+.grid-item.grid-item-static {
+  cursor: default;
+}
+
+.grid-item:not(.grid-item-static):not(.grid-item-dragging) {
+  cursor: grab;
+}
+
+/* ==================== 内容区域 ==================== */
+.grid-item-content {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* ==================== 占位符 ==================== */
+.grid-placeholder {
+  position: absolute;
+  background: rgba(0, 120, 255, 0.15);
+  border: 2px dashed rgba(0, 120, 255, 0.4);
+  border-radius: 4px;
+  z-index: 0;
+  pointer-events: none;
+  transition: all 200ms ease;
+}
+
+/* ==================== 调整大小手柄 ==================== */
+.grid-resize-handle {
+  position: absolute;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.grid-item:hover .grid-resize-handle,
+.grid-item.grid-item-resizing .grid-resize-handle {
+  opacity: 1;
+}
+
+/* 四角手柄 */
+.grid-resize-handle-se {
+  right: 0;
+  bottom: 0;
+  width: 20px;
+  height: 20px;
+  cursor: nwse-resize;
+}
+
+.grid-resize-handle-sw {
+  left: 0;
+  bottom: 0;
+  width: 20px;
+  height: 20px;
+  cursor: nesw-resize;
+}
+
+.grid-resize-handle-ne {
+  right: 0;
+  top: 0;
+  width: 20px;
+  height: 20px;
+  cursor: nesw-resize;
+}
+
+.grid-resize-handle-nw {
+  left: 0;
+  top: 0;
+  width: 20px;
+  height: 20px;
+  cursor: nwse-resize;
+}
+
+/* 四边手柄 */
+.grid-resize-handle-n,
+.grid-resize-handle-s {
+  left: 20px;
+  right: 20px;
+  height: 10px;
+  cursor: ns-resize;
+}
+
+.grid-resize-handle-n {
+  top: 0;
+}
+
+.grid-resize-handle-s {
+  bottom: 0;
+}
+
+.grid-resize-handle-e,
+.grid-resize-handle-w {
+  top: 20px;
+  bottom: 20px;
+  width: 10px;
+  cursor: ew-resize;
+}
+
+.grid-resize-handle-e {
+  right: 0;
+}
+
+.grid-resize-handle-w {
+  left: 0;
+}
+
+/* 手柄视觉指示器 */
+.grid-resize-handle-se::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid rgba(0, 0, 0, 0.3);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.3);
+}
+
+/* ==================== 外部拖拽 ==================== */
+.grid-external-helper {
+  position: fixed;
+  z-index: 10000;
+  pointer-events: none;
+  opacity: 0.8;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.grid-drop-target {
+  outline: 2px dashed rgba(0, 120, 255, 0.6);
+  outline-offset: -2px;
+}
+
+/* ==================== 动画 ==================== */
+@keyframes grid-item-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.grid-item-enter {
+  animation: grid-item-appear 200ms ease;
+}
+
+/* ==================== 暗色主题 ==================== */
+.grid-container.grid-dark .grid-item-content {
+  background: #1e1e1e;
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.grid-container.grid-dark .grid-placeholder {
+  background: rgba(100, 180, 255, 0.15);
+  border-color: rgba(100, 180, 255, 0.4);
+}
+
+.grid-container.grid-dark .grid-resize-handle-se::after {
+  border-color: rgba(255, 255, 255, 0.3);
+}
