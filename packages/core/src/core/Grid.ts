@@ -29,6 +29,8 @@ export class Grid<T = unknown> {
   private cellHeight = 0;
   private debouncedLayout: ReturnType<typeof debounce>;
   private styleElement: HTMLStyleElement | null = null;
+  // 拖拽/调整大小开始时的原始布局快照
+  private originalSnapshot: LayoutEngine<T> | null = null;
 
   constructor(container: HTMLElement | string, options: DeepPartial<GridOptions> = {}) {
     this.container = typeof container === 'string'
@@ -71,8 +73,9 @@ export class Grid<T = unknown> {
 .${itemClass} { position: absolute; box-sizing: border-box; ${anim.enabled ? `transition: transform ${anim.duration}ms ${anim.easing}, width ${anim.duration}ms ${anim.easing}, height ${anim.duration}ms ${anim.easing};` : ''} }
 .${itemClass}.${draggingClass}, .${itemClass}.${resizingClass} { z-index: 100; opacity: 0.9; transition: none !important; }
 .${placeholderClass} { position: absolute; background: rgba(0,120,255,0.15); border: 2px dashed rgba(0,120,255,0.4); border-radius: 4px; z-index: 0; pointer-events: none; ${anim.enabled ? `transition: all ${anim.duration}ms ${anim.easing};` : ''} }
-.grid-item-content { width: 100%; height: 100%; overflow: auto; }
-.grid-resize-handle { position: absolute; z-index: 10; }
+.grid-item-content { width: 100%; height: 100%; overflow: hidden; position: relative; }
+.grid-item-inner { width: 100%; height: 100%; overflow: auto; position: relative; z-index: 1; }
+.grid-resize-handle { position: absolute; z-index: 10; background: transparent; }
 .grid-resize-handle-se { right: 0; bottom: 0; width: 20px; height: 20px; cursor: nwse-resize; }
 .grid-resize-handle-sw { left: 0; bottom: 0; width: 20px; height: 20px; cursor: nesw-resize; }
 .grid-resize-handle-ne { right: 0; top: 0; width: 20px; height: 20px; cursor: nesw-resize; }
@@ -89,6 +92,8 @@ export class Grid<T = unknown> {
   private setupDragHandler(): void {
     this.dragHandler = new DragHandler<T>(this.container, this.options, {
       onDragStart: (data) => {
+        // 保存原始布局快照
+        this.originalSnapshot = this.engine.clone();
         this.updatePlaceholder(data.item);
         this.showPlaceholder();
         addClass(data.item.el!, this.options.draggingClass);
@@ -101,6 +106,7 @@ export class Grid<T = unknown> {
         this.emit('drag', data);
       },
       onDragEnd: (data) => {
+        this.originalSnapshot = null;
         this.hidePlaceholder();
         removeClass(data.item.el!, this.options.draggingClass);
         this.engine.moveItem(data.item.id, data.item.x, data.item.y);
@@ -109,6 +115,7 @@ export class Grid<T = unknown> {
         this.emit('change', { items: [data.item], type: 'move', source: 'user' } as ChangeEventData<T>);
       },
       onDragCancel: () => {
+        this.originalSnapshot = null;
         this.hidePlaceholder();
         this.updateAllItems();
       },
@@ -118,6 +125,8 @@ export class Grid<T = unknown> {
   private setupResizeHandler(): void {
     this.resizeHandler = new ResizeHandler<T>(this.container, this.options, {
       onResizeStart: (data) => {
+        // 保存原始布局快照
+        this.originalSnapshot = this.engine.clone();
         this.updatePlaceholder(data.item);
         this.showPlaceholder();
         addClass(data.item.el!, this.options.resizingClass);
@@ -130,6 +139,7 @@ export class Grid<T = unknown> {
         this.emit('resize', data);
       },
       onResizeEnd: (data) => {
+        this.originalSnapshot = null;
         this.hidePlaceholder();
         removeClass(data.item.el!, this.options.resizingClass);
         this.engine.resizeItem(data.item.id, data.item.w, data.item.h);
@@ -139,6 +149,7 @@ export class Grid<T = unknown> {
         this.emit('change', { items: [data.item], type: 'resize', source: 'user' } as ChangeEventData<T>);
       },
       onResizeCancel: () => {
+        this.originalSnapshot = null;
         this.hidePlaceholder();
         this.updateAllItems();
       },
@@ -195,6 +206,8 @@ export class Grid<T = unknown> {
 
   getWidget(id: ItemId): GridItem<T> | undefined { return this.engine.getItem(id); }
   getWidgets(): GridItem<T>[] { return this.engine.getItems(); }
+  /** Alias for getWidgets */
+  getItems(): GridItem<T>[] { return this.getWidgets(); }
 
   updateWidget(id: ItemId, updates: Partial<GridItemData<T>>): boolean {
     const success = this.engine.updateItem(id, updates);
@@ -250,6 +263,32 @@ export class Grid<T = unknown> {
   getColumn(): number { return this.options.column; }
   setColumn(col: number): void { this.options.column = col; this.engine.setOptions({ column: col }); this.updateDimensions(); this.updateLayout(); }
 
+  // 便捷方法
+  setFloat(value: boolean): void { this.setOptions({ float: value }); if (!value) this.compact(); }
+  setStatic(value: boolean): void { this.setOptions({ draggable: !value, resizable: !value }); }
+  setCellHeight(height: number): void { this.setOptions({ cellHeight: height }); }
+
+  /** 像素坐标转网格坐标 */
+  pixelToGrid(px: number, py: number): { x: number; y: number } {
+    this.updateDimensions();
+    const { gap } = this.options;
+    const marginVal = typeof this.options.margin === 'number' ? this.options.margin : 10;
+    const cellW = this.cellWidth + gap;
+    const cellH = this.cellHeight + gap;
+    return {
+      x: Math.round(Math.max(0, (px - marginVal)) / cellW),
+      y: Math.round(Math.max(0, (py - marginVal)) / cellH),
+    };
+  }
+
+  /** 便捷的 change 事件监听 */
+  onChange(callback: (items: GridItemData<T>[]) => void): () => void {
+    return this.on('change', (data) => callback(data.items.map(i => ({
+      id: i.id, x: i.x, y: i.y, w: i.w, h: i.h,
+      minW: i.minW, maxW: i.maxW, minH: i.minH, maxH: i.maxH, static: i.static,
+    })) as GridItemData<T>[]));
+  }
+
   // ==================== 事件 ====================
 
   on<K extends keyof GridEventMap>(event: K, handler: GridEventHandler<K, T>): () => void {
@@ -272,14 +311,19 @@ export class Grid<T = unknown> {
     const el = createElement('div', { class: `${this.options.itemClass}${item.className ? ' ' + item.className : ''}`, 'data-grid-id': String(item.id) });
     (el as unknown as { _gridItem: GridItem<T> })._gridItem = item;
     item.el = el;
+    // 创建 content 容器
+    const content = createElement('div', { class: 'grid-item-content' });
+    // 创建内部容器用于放置实际内容（Vue Teleport 目标）
+    const inner = createElement('div', { class: 'grid-item-inner' });
     if (item.content) {
-      const content = createElement('div', { class: 'grid-item-content' });
-      content.innerHTML = item.content;
-      el.appendChild(content);
+      inner.innerHTML = item.content;
     }
+    content.appendChild(inner);
+    // resize handles 放在 inner 之后（确保在所有内容之上）
     if (this.options.resizable && !item.static && item.resizable !== false) {
-      createResizeHandles(el, item.resizeHandles ?? this.options.resizeHandles);
+      createResizeHandles(content, item.resizeHandles ?? this.options.resizeHandles);
     }
+    el.appendChild(content);
     this.applyItemPosition(item);
     this.container.appendChild(el);
     return el;
@@ -334,12 +378,15 @@ export class Grid<T = unknown> {
   }
 
   private previewLayout(activeItem: GridItem<T>): void {
-    const preview = this.engine.clone();
+    // 使用原始快照，确保每次预览都从原始位置开始计算
+    const baseEngine = this.originalSnapshot ?? this.engine;
+    const preview = baseEngine.clone();
     const temp = activeItem._tempRect;
     if (temp) {
       preview.moveItem(activeItem.id, temp.x, temp.y);
       if (temp.w !== activeItem.w || temp.h !== activeItem.h) preview.resizeItem(activeItem.id, temp.w, temp.h);
     }
+    // 更新其他 item 的预览位置
     preview.getItems().forEach(pi => {
       if (pi.id === activeItem.id) return;
       const item = this.engine.getItem(pi.id);

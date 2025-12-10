@@ -143,10 +143,12 @@ export class DragHandler<T = unknown> {
   }
 
   private processDrag(): void {
-    if (!this.dragState || !this.containerRect) return;
+    if (!this.dragState) return;
+    // 每次都重新获取 containerRect，因为拖拽过程中布局可能变化
+    const containerRect = this.container.getBoundingClientRect();
     const { item, currentPos, offset } = this.dragState;
-    const relX = currentPos.x - this.containerRect.left - offset.x + this.container.scrollLeft;
-    const relY = currentPos.y - this.containerRect.top - offset.y + this.container.scrollTop;
+    const relX = currentPos.x - containerRect.left - offset.x + this.container.scrollLeft;
+    const relY = currentPos.y - containerRect.top - offset.y + this.container.scrollTop;
     const gridPos = pixelToGrid({ x: relX, y: relY }, this.cellWidth, this.cellHeight, this.options);
     const clampedPos = clampPosition(gridPos, item, this.options);
     item._tempRect = { x: clampedPos.x, y: clampedPos.y, w: item.w, h: item.h };

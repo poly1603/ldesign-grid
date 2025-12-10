@@ -2,7 +2,13 @@
 /**
  * GridItem - 网格项组件
  * 
- * 使用Teleport将slot内容渲染到core创建的grid-item-content元素中
+ * 职责：
+ * 1. 注册到 Core Grid
+ * 2. 使用 Teleport 将 slot 内容渲染到 Core 创建的 DOM 元素中
+ * 3. 卸载时注销
+ * 
+ * 注意：位置和大小由 Core 完全管理，不监听 props 变化
+ * 如需动态更新，请使用 Grid 组件的 API
  */
 import { ref, computed, watch, onMounted, onUnmounted, inject, Teleport } from 'vue';
 import type { Ref } from 'vue';
@@ -19,7 +25,7 @@ const props = withDefaults(defineProps<GridItemProps>(), {
   autoPosition: true,
 });
 
-// 注入Grid提供的方法
+// 注入 Grid 提供的方法
 const registerFn = inject<(id: string, data: Partial<GridItemData>) => HTMLElement | null>('grid-register');
 const unregisterFn = inject<(id: string) => void>('grid-unregister');
 const gridIsReady = inject<Ref<boolean>>('grid-is-ready');
@@ -33,11 +39,11 @@ const itemId = computed(() => {
   return `item-${Math.random().toString(36).slice(2, 9)}`;
 });
 
+// 只在首次注册时使用 props
 const register = () => {
   if (!registerFn || isRegistered.value) return;
   
   const itemData: Partial<GridItemData> = {
-    id: itemId.value,
     x: props.x,
     y: props.y,
     w: props.w,
@@ -60,36 +66,23 @@ const register = () => {
   }
 };
 
-// 等Grid就绪后注册
+// 等 Grid 就绪后注册
 onMounted(() => {
-  const tryRegister = () => {
-    if (gridIsReady?.value && !isRegistered.value) {
-      register();
-    }
-  };
-  
-  // 立即尝试
-  tryRegister();
-  
-  // 如果Grid还没准备好，监听变化
-  if (!isRegistered.value && gridIsReady) {
-    const stopWatch = watch(
-      gridIsReady,
-      (ready) => {
-        if (ready) {
-          tryRegister();
-          stopWatch();
-        }
+  if (gridIsReady?.value) {
+    register();
+  } else if (gridIsReady) {
+    const stopWatch = watch(gridIsReady, (ready) => {
+      if (ready) {
+        register();
+        stopWatch();
       }
-    );
+    });
   }
 });
 
 onUnmounted(() => {
   if (unregisterFn && isRegistered.value) {
     unregisterFn(itemId.value);
-    isRegistered.value = false;
-    teleportTarget.value = null;
   }
 });
 

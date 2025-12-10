@@ -70,28 +70,28 @@ const gridOptions = computed<DeepPartial<GridOptions>>(() => ({
 provide(GRID_KEY, gridInstance);
 provide(GRID_OPTIONS_KEY, gridOptions);
 
-// 注册GridItem - 返回content元素用于Teleport
+// 注册 GridItem - 返回 inner 元素用于 Teleport
 const registerItem = (id: string, data: Partial<GridItemData>): HTMLElement | null => {
   if (!gridInstance.value) return null;
   
-  // 检查是否已存在
+  // 检查是否已存在（避免重复创建）
   const existing = gridInstance.value.getWidget(id);
   if (existing?.el) {
-    const contentEl = existing.el.querySelector('.grid-item-content') as HTMLElement;
-    if (contentEl) {
-      itemContentElements.value.set(id, contentEl);
-      return contentEl;
+    const innerEl = existing.el.querySelector('.grid-item-inner') as HTMLElement;
+    if (innerEl) {
+      itemContentElements.value.set(id, innerEl);
+      return innerEl;
     }
   }
   
-  // 创建新widget（content必须非空才会创建.grid-item-content元素）
-  const item = gridInstance.value.addWidget({ ...data, id, content: ' ' });
+  // 创建新 widget
+  const item = gridInstance.value.addWidget({ ...data, id });
   if (item?.el) {
-    const contentEl = item.el.querySelector('.grid-item-content') as HTMLElement;
-    if (contentEl) {
-      itemContentElements.value.set(id, contentEl);
+    const innerEl = item.el.querySelector('.grid-item-inner') as HTMLElement;
+    if (innerEl) {
+      itemContentElements.value.set(id, innerEl);
       refreshItems();
-      return contentEl;
+      return innerEl;
     }
   }
   return null;
@@ -103,14 +103,8 @@ const unregisterItem = (id: string) => {
   refreshItems();
 };
 
-// 获取item的content元素
-const getItemContentEl = (id: string): HTMLElement | null => {
-  return itemContentElements.value.get(id) || null;
-};
-
 provide('grid-register', registerItem);
 provide('grid-unregister', unregisterItem);
-provide('grid-get-content-el', getItemContentEl);
 provide('grid-is-ready', isReady);
 
 const refreshItems = () => {
