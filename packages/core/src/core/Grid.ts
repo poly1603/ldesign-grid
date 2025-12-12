@@ -6,7 +6,7 @@ import type { ItemId } from '../types/base';
 import type { GridItem, GridItemData } from '../types/item';
 import type { GridOptions, DeepPartial } from '../types/options';
 import { DEFAULT_OPTIONS } from '../types/options';
-import type { GridEventMap, GridEventHandler, ChangeEventData } from '../types/events';
+import type { GridEventMap, GridEventHandler, ChangeEventData, DragEventData, ResizeEventData } from '../types/events';
 import { LayoutEngine } from '../engine/LayoutEngine';
 import { DragHandler } from '../handlers/DragHandler';
 import { ResizeHandler, createResizeHandles } from '../handlers/ResizeHandler';
@@ -101,6 +101,8 @@ export class Grid<T = unknown> {
         return true;
       },
       onDrag: (data) => {
+        // 更新被拖拽元素的视觉位置（跟随鼠标）
+        this.updateDraggingItemPosition(data);
         if (data.item._tempRect) this.updatePlaceholder(data.item);
         this.previewLayout(data.item);
         this.emit('drag', data);
@@ -109,7 +111,9 @@ export class Grid<T = unknown> {
         this.originalSnapshot = null;
         this.hidePlaceholder();
         removeClass(data.item.el!, this.options.draggingClass);
-        this.engine.moveItem(data.item.id, data.item.x, data.item.y);
+        // 强制解决碰撞（因为 item 位置已被 DragHandler 更新，直接调用 resolveCollisions）
+        this.engine.resolveCollisions(data.item);
+        if (this.options.compact) this.engine.compact();
         this.updateAllItems();
         this.emit('dragend', data);
         this.emit('change', { items: [data.item], type: 'move', source: 'user' } as ChangeEventData<T>);
@@ -134,6 +138,8 @@ export class Grid<T = unknown> {
         return true;
       },
       onResize: (data) => {
+        // 更新正在调整大小的元素的视觉尺寸
+        this.updateResizingItemPosition(data);
         if (data.item._tempRect) this.updatePlaceholder(data.item);
         this.previewLayout(data.item);
         this.emit('resize', data);
@@ -142,8 +148,9 @@ export class Grid<T = unknown> {
         this.originalSnapshot = null;
         this.hidePlaceholder();
         removeClass(data.item.el!, this.options.resizingClass);
-        this.engine.resizeItem(data.item.id, data.item.w, data.item.h);
-        if (data.item._tempRect) this.engine.moveItem(data.item.id, data.item._tempRect.x, data.item._tempRect.y);
+        // 强制解决碰撞（因为 item 位置/尺寸已被 ResizeHandler 更新）
+        this.engine.resolveCollisions(data.item);
+        if (this.options.compact) this.engine.compact();
         this.updateAllItems();
         this.emit('resizeend', data);
         this.emit('change', { items: [data.item], type: 'resize', source: 'user' } as ChangeEventData<T>);
@@ -360,6 +367,59 @@ export class Grid<T = unknown> {
 
   private showPlaceholder(): void { if (this.placeholder) this.placeholder.style.display = 'block'; }
   private hidePlaceholder(): void { if (this.placeholder) this.placeholder.style.display = 'none'; }
+
+  /** 更新正在拖拽的元素的视觉位置（跟随鼠标） */
+  private updateDraggingItemPosition(data: DragEventData<T>): void {
+    const { item, pixelPosition, offset } = data;
+    if (!item.el) return;
+
+    const containerRect = this.container.getBoundingClientRect();
+    const relX = pixelPosition.x - containerRect.left - offset.x + this.container.scrollLeft;
+    const relY = pixelPosition.y - containerRect.top - offset.y + this.container.scrollTop;
+
+    // 计算元素尺寸（保持不变）
+    const px = getPixelRect({ x: item.x, y: item.y, w: item.w, h: item.h }, this.cellWidth, this.cellHeight, this.options);
+
+    // 直接设置像素位置和尺寸，让元素跟随鼠标
+    if (this.options.styleMode === 'transform') {
+      setStyles(item.el, {
+        transform: `translate(${relX}px, ${relY}px)`,
+        width: `${px.width}px`,
+        height: `${px.height}px`
+      });
+    } else {
+      setStyles(item.el, {
+        left: `${relX}px`,
+        top: `${relY}px`,
+        width: `${px.width}px`,
+        height: `${px.height}px`
+      });
+    }
+  }
+
+  /** 更新正在调整大小的元素的视觉尺寸 */
+  private updateResizingItemPosition(data: ResizeEventData<T>): void {
+    const { item } = data;
+    if (!item.el || !item._tempRect) return;
+
+    // 使用临时矩形计算像素尺寸
+    const px = getPixelRect(item._tempRect, this.cellWidth, this.cellHeight, this.options);
+
+    if (this.options.styleMode === 'transform') {
+      setStyles(item.el, {
+        transform: `translate(${px.left}px, ${px.top}px)`,
+        width: `${px.width}px`,
+        height: `${px.height}px`
+      });
+    } else {
+      setStyles(item.el, {
+        left: `${px.left}px`,
+        top: `${px.top}px`,
+        width: `${px.width}px`,
+        height: `${px.height}px`
+      });
+    }
+  }
 
   private updateDimensions(): void {
     const rect = this.container.getBoundingClientRect();

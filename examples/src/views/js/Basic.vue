@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import { Grid } from '../../utils/grid';
+import { createGrid, type Grid } from '@ldesign/grid-core';
 import { Plus, Trash2, Package, Code } from 'lucide-vue-next';
 
 const containerRef = ref<HTMLElement | null>(null);
@@ -42,7 +42,7 @@ const clearAll = () => grid?.removeAll();
 
 onMounted(() => {
   if (!containerRef.value) return;
-  grid = new Grid(containerRef.value, { column: 12, cellHeight: 80, gap: 10, margin: 10 });
+  grid = createGrid(containerRef.value, { column: 12, cellHeight: 80, gap: 10, margin: 10 });
   grid.addWidget({ x: 0, y: 0, w: 4, h: 2, content: '<div class="widget-content">组件 1<br><small>4×2</small></div>' });
   grid.addWidget({ x: 4, y: 0, w: 4, h: 1, content: '<div class="widget-content">组件 2<br><small>4×1</small></div>' });
   grid.addWidget({ x: 8, y: 0, w: 4, h: 2, content: '<div class="widget-content">组件 3<br><small>4×2</small></div>' });
@@ -59,24 +59,35 @@ onUnmounted(() => grid?.destroy());
       <h1 class="page-title">基础网格</h1>
       <p class="page-description">拖拽组件移动位置，拖拽右下角调整大小。组件会自动紧凑排列，避免重叠。</p>
     </div>
-    
+
     <div class="toolbar">
-      <button class="btn btn-primary btn-sm" @click="addWidget"><Plus :size="14" /> 添加组件</button>
-      <button class="btn btn-danger btn-sm" @click="clearAll"><Trash2 :size="14" /> 清空</button>
+      <button class="btn btn-primary btn-sm" @click="addWidget">
+        <Plus :size="14" /> 添加组件
+      </button>
+      <button class="btn btn-danger btn-sm" @click="clearAll">
+        <Trash2 :size="14" /> 清空
+      </button>
       <div class="toolbar-divider"></div>
-      <button class="btn btn-secondary btn-sm" @click="showCode = !showCode"><Code :size="14" /> {{ showCode ? '隐藏' : '查看' }}代码</button>
+      <button class="btn btn-secondary btn-sm" @click="showCode = !showCode"><Code :size="14" /> {{ showCode ? '隐藏' :
+        '查看' }}代码</button>
     </div>
-    
+
     <div class="card">
-      <div class="card-header"><span class="card-title"><Package :size="16" /> 网格布局</span></div>
+      <div class="card-header"><span class="card-title">
+          <Package :size="16" /> 网格布局
+        </span></div>
       <div class="card-body card-body-flush">
         <div ref="containerRef" style="min-height: 400px;"></div>
       </div>
     </div>
-    
+
     <div v-if="showCode" class="card">
       <div class="card-header"><span class="card-title"><Code :size="16" /> 代码示例</span></div>
-      <div class="card-body"><div class="code-block"><pre>{{ code }}</pre></div></div>
+      <div class="card-body">
+        <div class="code-block">
+          <pre>{{ code }}</pre>
+        </div>
+      </div>
     </div>
   </div>
 </template>
